@@ -33,41 +33,27 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Solana wallet logic with better Phantom detection
+        // Wallet logic
         let publicKey = null;
-        let phantom = null;
 
-        // Wait for Phantom to be available
-        function getPhantom() {
-            return new Promise((resolve, reject) => {
-                const checkPhantom = () => {
-                    if (window.solana && window.solana.isPhantom) {
-                        resolve(window.solana);
+        async function connectWallet() {
+            if (window.solana && window.solana.isPhantom) {
+                try {
+                    await window.solana.connect();
+                    publicKey = window.solana.publicKey.toString();
+                    alert(`Connected to Phantom Wallet: ${publicKey}`);
+                } catch (error) {
+                    console.error('Error during wallet connection:', error);
+                    if (error.message.includes("User rejected the request")) {
+                        alert('You declined the connection. Please try again.');
                     } else {
-                        setTimeout(checkPhantom, 100); // Check every 100ms
+                        alert('An error occurred. Please try again.');
                     }
-                };
-                checkPhantom();
-            });
-        }
-
-        document.getElementById('connect').onclick = async () => {
-            try {
-                if (!phantom) {
-                    phantom = await getPhantom();
                 }
-                if (phantom) {
-                    const resp = await phantom.connect();
-                    publicKey = resp.publicKey.toString();
-                    alert(`Connected: ${publicKey}`);
-                } else {
-                    alert("Please install Phantom wallet or ensure it’s unlocked!");
-                }
-            } catch (err) {
-                console.error("Connection failed:", err);
-                alert("Failed to connect to Phantom. Make sure it’s installed and unlocked.");
+            } else {
+                alert('Phantom Wallet is not detected. Please install it and try again.');
             }
-        };
+        }
 
         // Voting logic
         async function vote(choice) {
@@ -87,6 +73,7 @@
                 `A: ${votes.filter(v => v === 'A').length}, B: ${votes.filter(v => v === 'B').length}`;
         }
 
+        document.getElementById('connect').onclick = connectWallet;
         document.getElementById('voteA').onclick = () => vote('A');
         document.getElementById('voteB').onclick = () => vote('B');
 
