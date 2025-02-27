@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Solana Voting</title>
+</head>
+<body>
+    <h1>Vote Here</h1>
+    <button id="connect">Connect Wallet</button>
+    <button id="voteA">Vote A</button>
+    <button id="voteB">Vote B</button>
+    <div id="results"></div>
+
+    <!-- Load Solana web3.js for Phantom wallet -->
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
+
+    <!-- Load Firebase SDK from CDN -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js"></script>
+
+    <script>
+        // Your Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyABc3oR2hxlm_DTE9vsEHufk7BZ6TqeKP0",
+            authDomain: "voting-f332e.firebaseapp.com",
+            projectId: "voting-f332e",
+            storageBucket: "voting-f332e.firebasestorage.app",
+            messagingSenderId: "551078651014",
+            appId: "1:551078651014:web:86646146a581b8dc3edd07",
+            measurementId: "G-WYLGQ9B7KC"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Solana wallet logic
+        const { solana } = window;
+        let publicKey = null;
+
+        document.getElementById('connect').onclick = async () => {
+            if (solana && solana.isPhantom) {
+                const resp = await solana.connect();
+                publicKey = resp.publicKey.toString();
+                alert(`Connected: ${publicKey}`);
+            } else {
+                alert("Please install Phantom wallet!");
+            }
+        };
+
+        // Voting logic
+        async function vote(choice) {
+            if (!publicKey) return alert("Connect wallet first!");
+            const voterRef = db.collection('votes').doc(publicKey);
+            const doc = await voterRef.get();
+            if (doc.exists) return alert("You already voted!");
+            await voterRef.set({ choice, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            updateResults();
+        }
+
+        // Display results
+        async function updateResults() {
+            const snapshot = await db.collection('votes').get();
+            const votes = snapshot.docs.map(doc => doc.data().choice);
+            document.getElementById('results').innerText = 
+                `A: ${votes.filter(v => v === 'A').length}, B: ${votes.filter(v => v === 'B').length}`;
+        }
+
+        document.getElementById('voteA').onclick = () => vote('A');
+        document.getElementById('voteB').onclick = () => vote('B');
+
+        // Show initial results
+        updateResults();
+    </script>
+</body>
+</html>
