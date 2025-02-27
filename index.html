@@ -44,8 +44,9 @@
             justify-content: center;
             gap: 20px;
             margin-top: 20px;
+            flex-wrap: wrap; /* Ensure buttons wrap on small screens */
         }
-        .vote-btn {
+        .vote-btn, #connect {
             padding: 15px 30px;
             font-size: 20px; /* Bigger font */
             color: #ffffff;
@@ -57,12 +58,12 @@
             background-image: linear-gradient(to bottom, #005f73, #023e58); /* Gradient texture */
             transition: transform 0.2s, box-shadow 0.2s;
         }
-        .vote-btn:hover {
+        .vote-btn:hover, #connect:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
             background-image: linear-gradient(to bottom, #023e58, #001f2e); /* Darker on hover */
         }
-        .vote-btn:active {
+        .vote-btn:active, #connect:active {
             transform: translateY(1px);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
@@ -79,6 +80,7 @@
     <div class="content">
         <div class="question">Which is better?</div>
         <div class="buttons">
+            <button id="connect">Connect Wallet</button>
             <button id="voteClean" class="vote-btn">Clean Water</button>
             <button id="voteToxic" class="vote-btn">Toxic Water</button>
         </div>
@@ -108,7 +110,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Wallet logic
+        // Wallet logic (exact copy from working version)
         let publicKey = null;
 
         async function connectWallet() {
@@ -158,7 +160,7 @@
                     `Clean Water: ${votes.filter(v => v === 'Clean Water').length}, Toxic Water: ${votes.filter(v => v === 'Toxic Water').length}`;
             } catch (error) {
                 console.error("Results error:", error);
-                document.getElementById('results').innerText = "Error: " + error.message;
+                document.getElementById('results').innerText = "Error: " + error.message);
             }
         }
 
