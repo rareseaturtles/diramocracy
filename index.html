@@ -10,15 +10,21 @@
     <button id="voteB">Vote B</button>
     <div id="results"></div>
 
-    <!-- Load Solana web3.js for Phantom wallet -->
+    <!-- Load Solana web3.js -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
 
-    <!-- Load Firebase SDK from CDN -->
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js"></script>
+    <!-- Load Wallet Adapter Base -->
+    <script src="https://unpkg.com/@solana/wallet-adapter-base@0.9.23/dist/iife/index.js"></script>
+
+    <!-- Load Phantom Wallet Adapter -->
+    <script src="https://unpkg.com/@solana/wallet-adapter-wallets@0.19.32/dist/iife/index.js"></script>
+
+    <!-- Load Firebase Legacy SDK (non-module) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <script>
-        // Your Firebase config
+        // Firebase config
         const firebaseConfig = {
             apiKey: "AIzaSyABc3oR2hxlm_DTE9vsEHufk7BZ6TqeKP0",
             authDomain: "voting-f332e.firebaseapp.com",
@@ -35,45 +41,80 @@
 
         // Wallet logic
         let publicKey = null;
+        let wallet = null;
 
+        // Initialize Phantom Wallet Adapter
+        const { PhantomWalletAdapter } = window.SolanaWalletAdapterWallets;
+        const network = "https://api.mainnet-beta.solana.com"; // Use devnet for testing: "https://api.devnet.solana.com"
+        const connection = new SolanaWeb3.Connection(network);
+        wallet = new PhantomWalletAdapter();
+
+        // Connect function
         async function connectWallet() {
-            if (window.solana && window.solana.isPhantom) {
-                try {
-                    await window.solana.connect();
-                    publicKey = window.solana.publicKey.toString();
-                    alert(`Connected to Phantom Wallet: ${publicKey}`);
-                } catch (error) {
-                    console.error('Error during wallet connection:', error);
-                    if (error.message.includes("User rejected the request")) {
-                        alert('You declined the connection. Please try again.');
-                    } else {
-                        alert('An error occurred. Please try again.');
-                    }
+            console.log("Connect button clicked!");
+            try {
+                if (!wallet) {
+                    console.log("Wallet not initialized!");
+                    alert("Wallet adapter not loaded.");
+                    return;
                 }
-            } else {
-                alert('Phantom Wallet is not detected. Please install it and try again.');
+                
+                console.log("Attempting to connect to Phantom...");
+                await wallet.connect();
+                publicKey = wallet.publicKey.toString();
+                console.log("Connected successfully! Public key:", publicKey);
+                alert(`Connected: ${publicKey}`);
+            } catch (error) {
+                console.error("Connection error:", error);
+                if (error.message.includes("Wallet not found")) {
+                    alert("Phantom Wallet not detected. Please install it.");
+                } else if (error.message.includes("User rejected")) {
+                    alert("You declined the connection. Please try again.");
+                } else {
+                    alert("Failed to connect. Check console for details.");
+                }
             }
         }
 
         // Voting logic
         async function vote(choice) {
             if (!publicKey) return alert("Connect wallet first!");
-            const voterRef = db.collection('votes').doc(publicKey);
-            const doc = await voterRef.get();
-            if (doc.exists) return alert("You already voted!");
-            await voterRef.set({ choice, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-            updateResults();
+            try {
+                const voterRef = db.collection('votes').doc(publicKey);
+                const doc = await voterRef.get();
+                if (doc.exists) return alert("You already voted!");
+                await voterRef.set({ choice, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                console.log(`Voted for ${choice}`);
+                updateResults();
+            } catch (error) {
+                console.error("Voting error:", error);
+                alert("Failed to vote. Check console.");
+            }
         }
 
         // Display results
         async function updateResults() {
-            const snapshot = await db.collection('votes').get();
-            const votes = snapshot.docs.map(doc => doc.data().choice);
-            document.getElementById('results').innerText = 
-                `A: ${votes.filter(v => v === 'A').length}, B: ${votes.filter(v => v === 'B').length}`;
+            try {
+                const snapshot = await db.collection('votes').get();
+                const votes = snapshot.docs.map(doc => doc.data().choice);
+                document.getElementById('results').innerText = 
+                    `A: ${votes.filter(v => v === 'A').length}, B: ${votes.filter(v => v === 'B').length}`;
+                console.log("Results:", votes);
+            } catch (error) {
+                console.error("Results error:", error);
+                document.getElementById('results').innerText = "Error loading results";
+            }
         }
 
-        document.getElementById('connect').onclick = connectWallet;
+        // Attach event listeners
+        const connectButton = document.getElementById('connect');
+        if (connectButton) {
+            connectButton.onclick = connectWallet;
+            console.log("Connect button listener attached.");
+        } else {
+            console.error("Connect button not found!");
+        }
+
         document.getElementById('voteA').onclick = () => vote('A');
         document.getElementById('voteB').onclick = () => vote('B');
 
