@@ -10,10 +10,10 @@
     <button id="voteB">Vote B</button>
     <div id="results"></div>
 
-    <!-- Load Solana web3.js (same version as Cryptodira) -->
+    <!-- Load Solana web3.js -->
     <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.57.0/dist/index.iife.min.js"></script>
 
-    <!-- Load Firebase Legacy SDK (non-module) -->
+    <!-- Load Firebase Legacy SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
@@ -30,8 +30,16 @@
         };
 
         // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
+        try {
+            firebase.initializeApp(firebaseConfig);
+            console.log("Firebase initialized.");
+        } catch (error) {
+            console.error("Firebase init failed:", error);
+        }
         const db = firebase.firestore();
+
+        // Log network status
+        console.log("Network status:", navigator.onLine ? "Online" : "Offline");
 
         // Wallet logic
         let publicKey = null;
@@ -39,61 +47,66 @@
         async function connectWallet() {
             if (window.solana && window.solana.isPhantom) {
                 try {
-                    console.log("Attempting to connect to Phantom...");
+                    console.log("Connecting to Phantom...");
                     await window.solana.connect();
                     publicKey = window.solana.publicKey.toString();
-                    console.log('Connected to Phantom Wallet:', publicKey);
+                    console.log("Connected:", publicKey);
                     alert(`Connected: ${publicKey}`);
                 } catch (error) {
-                    console.error('Error during wallet connection:', error);
-                    if (error.message.includes("User rejected the request")) {
-                        alert('You declined the connection. Please try again.');
-                    } else {
-                        alert('An error occurred. Please try again.');
-                    }
+                    console.error("Connection error:", error);
+                    alert("Failed to connect: " + error.message);
                 }
             } else {
                 console.log("Phantom not detected.");
-                alert('Phantom Wallet is not detected. Please install it and try again.');
+                alert("Phantom Wallet not detected. Please install it.");
             }
         }
 
         // Voting logic
         async function vote(choice) {
             if (!publicKey) return alert("Connect wallet first!");
+            console.log("Starting vote for:", choice, "by:", publicKey);
             try {
                 const voterRef = db.collection('votes').doc(publicKey);
+                console.log("Checking existing vote...");
                 const doc = await voterRef.get();
+                console.log("Vote exists:", doc.exists, "Data:", doc.data());
                 if (doc.exists) return alert("You already voted!");
-                await voterRef.set({ choice, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-                console.log(`Voted for ${choice}`);
+
+                console.log("Writing new vote...");
+                await voterRef.set({ 
+                    choice, 
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp() 
+                });
+                console.log("Vote recorded.");
                 updateResults();
             } catch (error) {
                 console.error("Voting error:", error);
-                alert("Failed to vote. Check console.");
+                alert("Vote failed: " + error.message);
             }
         }
 
         // Display results
         async function updateResults() {
             try {
+                console.log("Fetching results...");
                 const snapshot = await db.collection('votes').get();
                 const votes = snapshot.docs.map(doc => doc.data().choice);
                 document.getElementById('results').innerText = 
                     `A: ${votes.filter(v => v === 'A').length}, B: ${votes.filter(v => v === 'B').length}`;
-                console.log("Results:", votes);
+                console.log("Results fetched:", votes);
             } catch (error) {
                 console.error("Results error:", error);
-                document.getElementById('results').innerText = "Error loading results";
+                document.getElementById('results').innerText = "Error: " + error.message);
             }
         }
 
-        // Attach event listeners
+        // Event listeners
         document.getElementById('connect').onclick = connectWallet;
         document.getElementById('voteA').onclick = () => vote('A');
         document.getElementById('voteB').onclick = () => vote('B');
 
-        // Show initial results
+        // Initial results
         updateResults();
     </script>
 </body>
